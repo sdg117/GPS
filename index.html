@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GPS Coordinate Grabber</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: #0f172a;
+        color: #e2e8f0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .container {
+        background: #1e293b;
+        border-radius: 16px;
+        padding: 32px 24px;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+      }
+
+      h1 {
+        text-align: center;
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        text-align: center;
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+      }
+
+      .btn {
+        display: block;
+        width: 100%;
+        padding: 16px;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.15s;
+      }
+
+      .btn:active {
+        transform: scale(0.97);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+      }
+
+      .btn-primary:hover {
+        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+      }
+
+      .btn-primary:disabled {
+        background: #475569;
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+
+      .btn-copy {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+      }
+
+      .btn-copy:hover {
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
+      }
+
+      .btn-sm {
+        padding: 12px;
+        font-size: 0.9rem;
+      }
+
+      /* Tabs */
+      .tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .tab-btn {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid #334155;
+        border-radius: 10px;
+        background: transparent;
+        color: #94a3b8;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .tab-btn.active {
+        border-color: #3b82f6;
+        background: rgba(59, 130, 246, 0.15);
+        color: #60a5fa;
+      }
+
+      .tab-content {
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      /* Map */
+      #map {
+        width: 100%;
+        height: 260px;
+        border-radius: 12px;
+        border: 2px solid #334155;
+        margin-bottom: 12px;
+        z-index: 1;
+      }
+
+      .map-hint {
+        text-align: center;
+        color: #64748b;
+        font-size: 0.8rem;
+        margin-bottom: 16px;
+      }
+
+      /* GPS prompt */
+      .gps-prompt {
+        text-align: center;
+        padding: 30px 10px;
+      }
+
+      .gps-prompt p {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        margin-bottom: 20px;
+        line-height: 1.5;
+      }
+
+      .gps-prompt .icon {
+        font-size: 3rem;
+        margin-bottom: 16px;
+      }
+
+      /* Loading */
+      .loading-container {
+        text-align: center;
+        padding: 30px 0;
+      }
+
+      .loading-spinner {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        border: 4px solid #334155;
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 16px;
+      }
+
+      .spinner {
+        display: inline-block;
+        width: 18px;
+        height: 18px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        vertical-align: middle;
+        margin-right: 8px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Results */
+      .results {
+        display: none;
+        margin-top: 20px;
+      }
+
+      .results.visible {
+        display: block;
+      }
+
+      .coord-card {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 12px;
+        padding: 16px;
+      }
+
+      .coord-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 4px;
+      }
+
+      .coord-value {
+        font-size: 1.25rem;
+        font-family: "SF Mono", "Fira Code", "Courier New", monospace;
+        color: #f1f5f9;
+        word-break: break-all;
+      }
+
+      .coord-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 4px;
+      }
+
+      .format-group {
+        margin-bottom: 16px;
+      }
+
+      .format-label {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        font-weight: 600;
+      }
+
+      .format-value {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px;
+        font-family: "SF Mono", "Fira Code", "Courier New", monospace;
+        font-size: 0.95rem;
+        color: #f1f5f9;
+      }
+
+      .source-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin-bottom: 16px;
+      }
+
+      .source-badge.gps {
+        background: #1e3a5f;
+        color: #93c5fd;
+      }
+
+      .source-badge.manual {
+        background: #3b1e5f;
+        color: #c49bfd;
+      }
+
+      .accuracy-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+      }
+
+      .accuracy-dot.good {
+        background: #10b981;
+      }
+      .accuracy-dot.ok {
+        background: #f59e0b;
+      }
+      .accuracy-dot.poor {
+        background: #ef4444;
+      }
+
+      .status {
+        text-align: center;
+        padding: 12px;
+        font-size: 0.9rem;
+        color: #94a3b8;
+      }
+
+      .status.error {
+        color: #f87171;
+      }
+
+      .close-note {
+        text-align: center;
+        color: #64748b;
+        font-size: 0.8rem;
+        margin-top: 12px;
+      }
+
+      .manual-close {
+        display: none;
+        text-align: center;
+        margin-top: 16px;
+        padding: 12px;
+        background: #1e3a5f;
+        border-radius: 10px;
+        color: #93c5fd;
+        font-size: 0.9rem;
+      }
+
+      .manual-close.visible {
+        display: block;
+      }
+
+      .map-link {
+        display: block;
+        text-align: center;
+        color: #60a5fa;
+        text-decoration: none;
+        font-size: 0.85rem;
+        margin-top: 16px;
+        padding: 8px;
+      }
+
+      .map-link:hover {
+        text-decoration: underline;
+      }
+
+      .search-box {
+        position: relative;
+        margin-bottom: 12px;
+      }
+
+      .search-box input {
+        width: 100%;
+        padding: 12px 44px 12px 14px;
+        border: 2px solid #334155;
+        border-radius: 10px;
+        background: #0f172a;
+        color: #e2e8f0;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+      }
+
+      .search-box input:focus {
+        border-color: #3b82f6;
+      }
+
+      .search-box input::placeholder {
+        color: #475569;
+      }
+
+      .search-box button {
+        position: absolute;
+        right: 4px;
+        top: 4px;
+        bottom: 4px;
+        width: 36px;
+        border: none;
+        background: #3b82f6;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+      }
+
+      .search-results {
+        background: #0f172a;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        max-height: 150px;
+        overflow-y: auto;
+        display: none;
+        position: absolute;
+        width: 100%;
+        z-index: 10;
+      }
+
+      .search-results.visible {
+        display: block;
+      }
+
+      .search-result-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        border-bottom: 1px solid #1e293b;
+        color: #cbd5e1;
+      }
+
+      .search-result-item:hover {
+        background: #1e293b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>📍 GPS Coordinates</h1>
+      <p class="subtitle">Choose how to set your location</p>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button
+          class="tab-btn active"
+          id="tabBtnAuto"
+          onclick="switchTab('auto')"
+        >
+          📡 Auto GPS
+        </button>
+        <button class="tab-btn" id="tabBtnMap" onclick="switchTab('map')">
+          🗺️ Pick on Map
+        </button>
+      </div>
+
+      <!-- AUTO GPS TAB -->
+      <div class="tab-content active" id="tab-auto">
+        <!-- Initial prompt -->
+        <div id="gpsPrompt" class="gps-prompt">
+          <div class="icon">📍</div>
+          <p>
+            Tap the button below to get your current location using your
+            device's GPS.
+          </p>
+          <button
+            class="btn btn-primary"
+            id="getLocationBtn"
+            onclick="getLocation()"
+          >
+            Get My Location
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div id="loadingState" class="loading-container" style="display: none">
+          <div class="loading-spinner"></div>
+          <div class="status">Requesting GPS access...</div>
+        </div>
+
+        <!-- Error -->
+        <div id="errorState" style="display: none">
+          <div id="errorMsg" class="status error"></div>
+          <button
+            class="btn btn-primary btn-sm"
+            onclick="getLocation()"
+            style="margin-bottom: 8px"
+          >
+            🔄 Try Again
+          </button>
+          <p
+            class="map-hint"
+            style="color: #64748b; font-size: 0.8rem; text-align: center"
+          >
+            Or switch to "Pick on Map" above
+          </p>
+        </div>
+
+        <!-- GPS Success -->
+        <div id="gpsSuccess" style="display: none">
+          <div class="status" style="color: #10b981">
+            ✅ Location found via GPS
+          </div>
+          <button
+            class="btn btn-primary btn-sm"
+            onclick="getLocation()"
+            style="margin-top: 4px"
+          >
+            🔄 Refresh Location
+          </button>
+        </div>
+      </div>
+
+      <!-- MAP TAB -->
+      <div class="tab-content" id="tab-map">
+        <div class="search-box">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="Search a place name..."
+            onkeydown="if(event.key==='Enter') searchPlace()"
+          />
+          <button onclick="searchPlace()">🔍</button>
+          <div class="search-results" id="searchResults"></div>
+        </div>
+
+        <div id="map"></div>
+        <p class="map-hint">
+          Tap the map to place a pin, or drag the pin to adjust
+        </p>
+      </div>
+
+      <!-- RESULTS (shared by both tabs) -->
+      <div class="results" id="results">
+        <div id="sourceBadge" class="source-badge gps">
+          <span class="accuracy-dot good" id="accuracyDot"></span>
+          <span id="sourceText"></span>
+        </div>
+
+        <div class="format-group">
+          <div class="format-label">Coordinates</div>
+          <div class="format-value" id="ddFormat"></div>
+        </div>
+
+        <div class="coord-row">
+          <div class="coord-card">
+            <div class="coord-label">Latitude</div>
+            <div class="coord-value" id="latValue"></div>
+          </div>
+          <div class="coord-card">
+            <div class="coord-label">Longitude</div>
+            <div class="coord-value" id="lngValue"></div>
+          </div>
+        </div>
+
+        <button class="btn btn-copy" id="copyCloseBtn" onclick="copyAndClose()">
+          📋 Copy Coordinates & Close
+        </button>
+
+        <p class="close-note">
+          Copies to clipboard and returns you to your form
+        </p>
+
+        <div class="manual-close" id="manualClose">
+          ✅ Copied! You can close this tab and paste into your form.
+        </div>
+
+        <a class="map-link" id="mapLink" href="#" target="_blank"
+          >🗺️ Verify on Google Maps</a
+        >
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      // --- CONFIG ---
+      const DECIMALS = 6;
+      const BC_CENTER = [53.7267, -127.6476];
+      const BC_ZOOM = 5;
+      const GPS_ZOOM = 15;
+
+      // --- STATE ---
+      let currentLat = null;
+      let currentLng = null;
+      let map = null;
+      let marker = null;
+      let mapInitialized = false;
+      let currentSource = "gps";
+
+      // --- TAB SWITCHING ---
+      function switchTab(tab) {
+        document
+          .getElementById("tabBtnAuto")
+          .classList.toggle("active", tab === "auto");
+        document
+          .getElementById("tabBtnMap")
+          .classList.toggle("active", tab === "map");
+        document
+          .getElementById("tab-auto")
+          .classList.toggle("active", tab === "auto");
+        document
+          .getElementById("tab-map")
+          .classList.toggle("active", tab === "map");
+
+        if (tab === "map") {
+          initMap();
+        }
+      }
+
+      // --- AUTO GPS ---
+      function getLocation() {
+        document.getElementById("gpsPrompt").style.display = "none";
+        document.getElementById("loadingState").style.display = "block";
+        document.getElementById("errorState").style.display = "none";
+        document.getElementById("gpsSuccess").style.display = "none";
+
+        if (!navigator.geolocation) {
+          showError('❌ Geolocation not supported. Use "Pick on Map" instead.');
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        });
+      }
+
+      function onGPSSuccess(position) {
+        currentLat = position.coords.latitude;
+        currentLng = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+        currentSource = "gps";
+
+        document.getElementById("loadingState").style.display = "none";
+        document.getElementById("gpsSuccess").style.display = "block";
+
+        const dot = document.getElementById("accuracyDot");
+        if (accuracy <= 10) dot.className = "accuracy-dot good";
+        else if (accuracy <= 30) dot.className = "accuracy-dot ok";
+        else dot.className = "accuracy-dot poor";
+
+        updateDisplay(`GPS · ±${accuracy.toFixed(1)}m`, "gps");
+
+        if (mapInitialized) {
+          updateMapMarker(currentLat, currentLng, GPS_ZOOM);
+        }
+      }
+
+      function onGPSError(error) {
+        let msg = "";
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            msg = "❌ Location permission denied. Allow access or pick on map.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            msg = "❌ Location unavailable. Enable GPS or pick on map.";
+            break;
+          case error.TIMEOUT:
+            msg = "❌ Request timed out. Try again or pick on map.";
+            break;
+          default:
+            msg = "❌ Unknown error. Try picking on map instead.";
+        }
+        showError(msg);
+      }
+
+      function showError(msg) {
+        document.getElementById("loadingState").style.display = "none";
+        document.getElementById("errorState").style.display = "block";
+        document.getElementById("errorMsg").textContent = msg;
+      }
+
+      // --- MAP ---
+      function initMap() {
+        if (mapInitialized) {
+          setTimeout(() => map.invalidateSize(), 100);
+          return;
+        }
+
+        const startLat = currentLat || BC_CENTER[0];
+        const startLng = currentLng || BC_CENTER[1];
+        const startZoom = currentLat ? GPS_ZOOM : BC_ZOOM;
+
+        map = L.map("map").setView([startLat, startLng], startZoom);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap",
+          maxZoom: 19,
+        }).addTo(map);
+
+        if (currentLat) {
+          placeMarker(currentLat, currentLng);
+        }
+
+        map.on("click", function (e) {
+          currentLat = e.latlng.lat;
+          currentLng = e.latlng.lng;
+          currentSource = "manual";
+
+          if (marker) {
+            marker.setLatLng(e.latlng);
+          } else {
+            placeMarker(currentLat, currentLng);
+          }
+
+          document.getElementById("accuracyDot").className = "accuracy-dot ok";
+          updateDisplay("📍 Manually selected", "manual");
+        });
+
+        mapInitialized = true;
+        setTimeout(() => map.invalidateSize(), 200);
+      }
+
+      function placeMarker(lat, lng) {
+        if (marker) {
+          marker.setLatLng([lat, lng]);
+        } else {
+          marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+
+          marker.on("dragend", function () {
+            const pos = marker.getLatLng();
+            currentLat = pos.lat;
+            currentLng = pos.lng;
+            currentSource = "manual";
+            document.getElementById("accuracyDot").className =
+              "accuracy-dot ok";
+            updateDisplay("📍 Manually selected", "manual");
+          });
+        }
+      }
+
+      function updateMapMarker(lat, lng, zoom) {
+        if (!map) return;
+        map.setView([lat, lng], zoom);
+        placeMarker(lat, lng);
+      }
+
+      // --- SEARCH ---
+      function searchPlace() {
+        const query = document.getElementById("searchInput").value.trim();
+        if (!query) return;
+
+        fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
+            query
+          )}&limit=5`
+        )
+          .then((res) => res.json())
+          .then((results) => {
+            const container = document.getElementById("searchResults");
+            container.innerHTML = "";
+
+            if (results.length === 0) {
+              container.innerHTML =
+                '<div class="search-result-item">No results found</div>';
+              container.classList.add("visible");
+              return;
+            }
+
+            results.forEach((r) => {
+              const item = document.createElement("div");
+              item.className = "search-result-item";
+              item.textContent = r.display_name;
+              item.onclick = () => {
+                const lat = parseFloat(r.lat);
+                const lng = parseFloat(r.lon);
+                currentLat = lat;
+                currentLng = lng;
+                currentSource = "manual";
+
+                map.setView([lat, lng], 14);
+                placeMarker(lat, lng);
+
+                document.getElementById("accuracyDot").className =
+                  "accuracy-dot ok";
+                updateDisplay("📍 " + r.display_name.split(",")[0], "manual");
+
+                container.classList.remove("visible");
+                document.getElementById("searchInput").value =
+                  r.display_name.split(",")[0];
+              };
+              container.appendChild(item);
+            });
+
+            container.classList.add("visible");
+          })
+          .catch(() => {
+            const container = document.getElementById("searchResults");
+            container.innerHTML =
+              '<div class="search-result-item">Search failed. Try again.</div>';
+            container.classList.add("visible");
+          });
+      }
+
+      document.addEventListener("click", function (e) {
+        if (!e.target.closest(".search-box")) {
+          document.getElementById("searchResults").classList.remove("visible");
+        }
+      });
+
+      // --- DISPLAY ---
+      function updateDisplay(sourceLabel, sourceType) {
+        const latStr = currentLat.toFixed(DECIMALS);
+        const lngStr = currentLng.toFixed(DECIMALS);
+
+        document.getElementById(
+          "ddFormat"
+        ).textContent = `${latStr}, ${lngStr}`;
+        document.getElementById("latValue").textContent = latStr;
+        document.getElementById("lngValue").textContent = lngStr;
+
+        const badge = document.getElementById("sourceBadge");
+        badge.className = `source-badge ${sourceType}`;
+        document.getElementById("sourceText").textContent = sourceLabel;
+
+        document.getElementById(
+          "mapLink"
+        ).href = `https://www.google.com/maps?q=${currentLat},${currentLng}`;
+
+        document.getElementById("results").classList.add("visible");
+
+        // Reset copy button in case it was previously used
+        const btn = document.getElementById("copyCloseBtn");
+        btn.innerHTML = "📋 Copy Coordinates & Close";
+        btn.style.background = "";
+        document.getElementById("manualClose").classList.remove("visible");
+      }
+
+      // --- COPY & CLOSE ---
+      function copyAndClose() {
+        if (currentLat === null) return;
+
+        const text = `${currentLat.toFixed(DECIMALS)}, ${currentLng.toFixed(
+          DECIMALS
+        )}`;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(text)
+            .then(() => tryClose())
+            .catch(() => fallbackCopy(text));
+        } else {
+          fallbackCopy(text);
+        }
+      }
+
+      function fallbackCopy(text) {
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed";
+        textarea.style.opacity = "0";
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+          document.execCommand("copy");
+        } catch (e) {
+          alert("Coordinates: " + text);
+        }
+        document.body.removeChild(textarea);
+        tryClose();
+      }
+
+      function tryClose() {
+        window.close();
+        setTimeout(() => {
+          document.getElementById("manualClose").classList.add("visible");
+          const btn = document.getElementById("copyCloseBtn");
+          btn.innerHTML = "✅ Copied!";
+          btn.style.background = "#475569";
+        }, 500);
+      }
+    </script>
+  </body>
+</html>
